@@ -15,18 +15,20 @@ p_keyper.fields = {
   pf_param_count,
 }
 
+function get_len_func(tvb, pktinfo, root)
+  return tvb:range(0, 4):uint()
+end
 
-function p_keyper.dissector(tvbuf, pktinfo, root)
-
+function dissect_func(tvbuf, pktinfo, root)
   -- set the protocol column to show our protocol name
   pktinfo.cols.protocol:set("Keyper")
 
   local pktlen = tvbuf:reported_length_remaining()
 
-  -- TODO: can't assume this frame is a whole message
   local tree = root:add(p_keyper, tvbuf:range(0, pktlen))
 
   tree:add(pf_length, tvbuf:range(0, 4))
+  pktinfo.cols.packet_len:set(tvbuf:range(0, 4):uint())
 
   -- the number of calls in this frame
   tree:add(pf_call_count, tvbuf:range(4, 1))
@@ -46,6 +48,11 @@ function p_keyper.dissector(tvbuf, pktinfo, root)
   end
 
   return pktlen
+end
+
+function p_keyper.dissector(tvbuf, pktinfo, root)
+  -- TODO: appropriate value for minimum header size?
+  dissect_tcp_pdus(tvbuf, root, 4, get_len_func, dissect_func)
 end
 
 DissectorTable.get("tcp.port"):add(5000, p_keyper)
